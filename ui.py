@@ -31,6 +31,19 @@ layout = html.Div([
                 'backgroundColor': '#f8f8f8',  
                 'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
             }),
+            
+            html.Label("Neighborhood Size", style={"fontFamily": "Arial, sans-serif"}),
+            dcc.Input(id="tabu-neighborhood-size", type="number", value=10, step=1, style={
+                'width': '100%',  
+                'padding': '12px 20px',  
+                'margin': '8px 0',  
+                'boxSizing': 'border-box',  
+                'border': '2px solid #ccc',  
+                'borderRadius': '4px',  
+                'fontSize': '16px',  
+                'backgroundColor': '#f8f8f8',  
+                'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
+            }),
         ], style={"margin-bottom": "20px"}),
 
         html.Label("Genetic Algorithm Parameters", style={"fontWeight": "bold", "fontFamily": "Arial, sans-serif"}),
@@ -73,6 +86,69 @@ layout = html.Div([
                 'backgroundColor': '#f8f8f8',  
                 'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
             }),
+            
+            html.Label("Crossover Operator", style={"fontFamily": "Arial, sans-serif"}),
+            dcc.Dropdown(
+                id="ga-crossover-operator",
+                options=[
+                    {"label": "PMX", "value": "pmx"},
+                    {"label": "OX", "value": "ox"}
+                ],
+                value="pmx",
+                style={
+                    'width': '100%',  
+                    'padding': '12px 20px',  
+                    'margin': '8px 0',  
+                    'boxSizing': 'border-box',  
+                    'border': '2px solid #ccc',  
+                    'borderRadius': '4px',  
+                    'fontSize': '16px',  
+                    'backgroundColor': '#f8f8f8',  
+                    'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
+                }
+            ),
+
+            html.Label("Selection Operator", style={"fontFamily": "Arial, sans-serif"}),
+            dcc.Dropdown(
+                id="ga-selection-operator",
+                options=[
+                    {"label": "Tournament", "value": "tournament"},
+                    {"label": "Random", "value": "random"}
+                ],
+                value="tournament",
+                style={
+                    'width': '100%',  
+                    'padding': '12px 20px',  
+                    'margin': '8px 0',  
+                    'boxSizing': 'border-box',  
+                    'border': '2px solid #ccc',  
+                    'borderRadius': '4px',  
+                    'fontSize': '16px',  
+                    'backgroundColor': '#f8f8f8',  
+                    'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
+                }
+            ),
+
+            html.Label("Mutation Operator", style={"fontFamily": "Arial, sans-serif"}),
+            dcc.Dropdown(
+                id="ga-mutation-operator",
+                options=[
+                    {"label": "Swap", "value": "swap"},
+                    {"label": "Scramble", "value": "scramble"}
+                ],
+                value="swap",
+                style={
+                    'width': '100%',  
+                    'padding': '12px 20px',  
+                    'margin': '8px 0',  
+                    'boxSizing': 'border-box',  
+                    'border': '2px solid #ccc',  
+                    'borderRadius': '4px',  
+                    'fontSize': '16px',  
+                    'backgroundColor': '#f8f8f8',  
+                    'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
+                }
+            ),
         ], style={"margin-bottom": "20px"}),
 
         html.Button("Run Comparison", id="run-button", n_clicks=0, style={
@@ -107,12 +183,17 @@ layout = html.Div([
         dcc.Graph(id="ga-result-graph", style={"display": "inline-block", "width": "30%"}),
         dcc.Graph(id="optimal-result-graph", style={"display": "inline-block", "width": "30%"}),
         dcc.Graph(id="convergence-graph", style={"display": "block", "margin": "0 auto", "width": "80%"}),
+        dcc.Graph(id="iteration-convergence-graph", style={"display": "block", "margin": "0 auto", "width": "80%"}),  # Add the new graph component here
+        dcc.Graph(id="distance-distribution-histogram", style={"display": "block", "margin": "0 auto", "width": "80%"}),
+        dcc.Graph(id="distance-box-plot", style={"display": "block", "margin": "0 auto", "width": "80%"}),
+        dcc.Graph(id="execution-time-scatter-plot", style={"display": "block", "margin": "0 auto", "width": "80%"}),
+        dcc.Graph(id="distance-matrix-heatmap", style={"display": "block", "margin": "0 auto", "width": "80%"}),
     ], style={"width": "100%", "textAlign": "center", "padding": "20px"}),
 
     html.Div(id="results-table", style={"margin-top": "20px"}),
     html.Div(id="tabu-params-table", style={"margin-top": "20px"}),
     html.Div(id="ga-params-table", style={"margin-top": "20px"}),
-    
+
     dcc.Store(id="tabu-params-store", data=[]),
     dcc.Store(id="ga-params-store", data=[]),
 ])

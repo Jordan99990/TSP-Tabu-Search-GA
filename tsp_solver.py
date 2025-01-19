@@ -1,8 +1,8 @@
-# tsp_solver.py
-
 import numpy as np
 import random
 import networkx as nx
+from networkx.algorithms.approximation import traveling_salesman_problem
+from networkx.algorithms.approximation.traveling_salesman import christofides
 
 class OptimalTSPSolver:
     def __init__(self, cities):
@@ -17,7 +17,7 @@ class OptimalTSPSolver:
             for j in range(i + 1, num_cities):
                 G.add_edge(i, j, weight=distance_matrix[i][j])
 
-        optimal_path = nx.approximation.traveling_salesman_problem(G, cycle=True)
+        optimal_path = traveling_salesman_problem(G, cycle=True, method=christofides)
         optimal_distance = self.calculate_total_distance(optimal_path)
         return optimal_path, optimal_distance
 
@@ -31,17 +31,18 @@ class OptimalTSPSolver:
 
     def calculate_total_distance(self, path):
         distance = 0
-        for i in range(len(path) - 1):
+        for i in range(len(path)):
             city_a = self.cities[path[i]]
-            city_b = self.cities[path[i + 1]]
+            city_b = self.cities[path[(i + 1) % len(path)]]
             distance += np.linalg.norm(city_a - city_b)
         return distance
     
 class TabuSearchSolver:
-    def __init__(self, cities, tabu_tenure, max_iterations):
+    def __init__(self, cities, tabu_tenure, max_iterations, neighborhood_size):
         self.cities = cities
         self.tabu_tenure = tabu_tenure
         self.max_iterations = max_iterations
+        self.neighborhood_size = neighborhood_size
 
     def solve(self):
         num_cities = len(self.cities)
@@ -91,12 +92,23 @@ class TabuSearchSolver:
                 neighborhood.append(neighbor)
         return neighborhood
 
+    def create_distance_matrix(self):
+        num_cities = len(self.cities)
+        distance_matrix = np.zeros((num_cities, num_cities))
+        for i in range(num_cities):
+            for j in range(num_cities):
+                distance_matrix[i][j] = np.linalg.norm(self.cities[i] - self.cities[j])
+        return distance_matrix
+
 class GeneticAlgorithmSolver:
-    def __init__(self, cities, population_size, mutation_rate, generations):
+    def __init__(self, cities, population_size, mutation_rate, generations, crossover_operator, selection_operator, mutation_operator):
         self.cities = cities
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.generations = generations
+        self.crossover_operator = crossover_operator
+        self.selection_operator = selection_operator
+        self.mutation_operator = mutation_operator
 
     def solve(self):
         population = [self.create_random_solution() for _ in range(self.population_size)]
@@ -137,14 +149,38 @@ class GeneticAlgorithmSolver:
         return distance
 
     def select_parents(self, population):
-        return random.sample(population, 2)
+        if self.selection_operator == "tournament":
+            return self.tournament_selection(population)
+        else:
+            return random.sample(population, 2)
 
     def crossover(self, parent1, parent2):
-        size = len(parent1)
-        start, end = sorted(random.sample(range(size), 2))
-        child1 = [None] * size
-        child2 = [None] * size
+        if self.crossover_operator == "pmx":
+            return self.pmx_crossover(parent1, parent2)
+        else:
+            return self.ox_crossover(parent1, parent2)
 
+    def mutate(self, solution):
+        if random.random() < self.mutation_rate:
+            if self.mutation_operator == "swap":
+                return self.swap_mutation(solution)
+            else:
+                return self.scramble_mutation(solution)
+        return solution
+
+    def tournament_selection(self, population):
+        tournament_size = 5
+        tournament = random.sample(population, tournament_size)
+        parent1 = min(tournament, key=self.calculate_total_distance)
+        tournament = random.sample(population, tournament_size)
+        parent2 = min(tournament, key=self.calculate_total_distance)
+        return parent1, parent2
+
+    def pmx_crossover(self, parent1, parent2):
+        size = len(parent1)
+        child1, child2 = [-1] * size, [-1] * size
+
+        start, end = sorted(random.sample(range(size), 2))
         child1[start:end] = parent1[start:end]
         child2[start:end] = parent2[start:end]
 
@@ -153,10 +189,29 @@ class GeneticAlgorithmSolver:
 
         return child1, child2
 
-    def mutate(self, solution):
-        if random.random() < self.mutation_rate:
-            i, j = random.sample(range(len(solution)), 2)
-            solution[i], solution[j] = solution[j], solution[i]
+    def ox_crossover(self, parent1, parent2):
+        size = len(parent1)
+        child1, child2 = [-1] * size, [-1] * size
+
+        start, end = sorted(random.sample(range(size), 2))
+        child1[start:end] = parent1[start:end]
+        child2[start:end] = parent2[start:end]
+
+        fill_child(child1, parent2, end, size)
+        fill_child(child2, parent1, end, size)
+
+        return child1, child2
+
+    def swap_mutation(self, solution):
+        i, j = random.sample(range(len(solution)), 2)
+        solution[i], solution[j] = solution[j], solution[i]
+        return solution
+
+    def scramble_mutation(self, solution):
+        start, end = sorted(random.sample(range(len(solution)), 2))
+        subset = solution[start:end]
+        random.shuffle(subset)
+        solution[start:end] = subset
         return solution
 
 def fill_child(child, parent, end, size):
@@ -167,32 +222,3 @@ def fill_child(child, parent, end, size):
                 current_pos = 0
             child[current_pos] = gene
             current_pos += 1
-            
-class NearestNeighborSolver:
-    def __init__(self, cities):
-        self.cities = cities
-
-    def solve(self):
-        num_cities = len(self.cities)
-        unvisited = list(range(num_cities))
-        current_city = unvisited.pop(0)
-        path = [current_city]
-
-        while unvisited:
-            nearest_city = min(unvisited, key=lambda city: np.linalg.norm(self.cities[current_city] - self.cities[city]))
-            unvisited.remove(nearest_city)
-            path.append(nearest_city)
-            current_city = nearest_city
-
-        path.append(path[0])  
-        distance = self.calculate_total_distance(path)
-        return path, distance
-
-    def calculate_total_distance(self, path):
-        distance = 0
-        for i in range(len(path) - 1):
-            city_a = self.cities[path[i]]
-            city_b = self.cities[path[i + 1]]
-            distance += np.linalg.norm(city_a - city_b)
-        return distance
-    
