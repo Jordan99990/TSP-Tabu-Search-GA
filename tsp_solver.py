@@ -35,14 +35,15 @@ class OptimalTSPSolver:
             city_a = self.cities[path[i]]
             city_b = self.cities[path[(i + 1) % len(path)]]
             distance += np.linalg.norm(city_a - city_b)
-        return distance
+        return int(distance)
     
 class TabuSearchSolver:
-    def __init__(self, cities, tabu_tenure, max_iterations, neighborhood_size):
+    def __init__(self, cities, tabu_tenure, max_iterations, neighborhood_size, neighborhood_structure):
         self.cities = cities
         self.tabu_tenure = tabu_tenure
         self.max_iterations = max_iterations
         self.neighborhood_size = neighborhood_size
+        self.neighborhood_structure = neighborhood_structure
 
     def solve(self):
         num_cities = len(self.cities)
@@ -81,20 +82,47 @@ class TabuSearchSolver:
             city_a = self.cities[solution[i]]
             city_b = self.cities[solution[(i + 1) % len(solution)]]
             distance += np.linalg.norm(city_a - city_b)
-        city_a = self.cities[solution[-1]]
-        city_b = self.cities[solution[0]]
-        distance += np.linalg.norm(city_a - city_b)
-        return distance
+        return int(distance)
 
     def get_neighborhood(self, solution):
+        if self.neighborhood_structure == "2-opt":
+            return self.two_opt_neighborhood(solution)
+        elif self.neighborhood_structure == "3-opt":
+            return self.three_opt_neighborhood(solution)
+        elif self.neighborhood_structure == "shuffle":
+            return self.shuffle_subtour_neighborhood(solution)
+        else:
+            raise ValueError("Invalid neighborhood structure")
+
+    def two_opt_neighborhood(self, solution):
         neighborhood = []
         for i in range(len(solution)):
             for j in range(i + 1, len(solution)):
                 neighbor = solution[:]
-                neighbor[i], neighbor[j] = neighbor[j], neighbor[i]
+                neighbor[i:j] = reversed(neighbor[i:j])
                 neighborhood.append(neighbor)
         return neighborhood
 
+    def three_opt_neighborhood(self, solution):
+        neighborhood = []
+        for i in range(len(solution)):
+            for j in range(i + 1, len(solution)):
+                for k in range(j + 1, len(solution)):
+                    neighbor = solution[:]
+                    neighbor[i:j] = reversed(neighbor[i:j])
+                    neighbor[j:k] = reversed(neighbor[j:k])
+                    neighborhood.append(neighbor)
+        return neighborhood
+
+    def shuffle_subtour_neighborhood(self, solution):
+        neighborhood = []
+        for i in range(len(solution)):
+            for j in range(i + 1, len(solution)):
+                neighbor = solution[:]
+                random.shuffle(neighbor[i:j])
+                neighborhood.append(neighbor)
+        return neighborhood
+    
     def create_distance_matrix(self):
         num_cities = len(self.cities)
         distance_matrix = np.zeros((num_cities, num_cities))
@@ -149,10 +177,7 @@ class GeneticAlgorithmSolver:
             city_a = self.cities[solution[i]]
             city_b = self.cities[solution[(i + 1) % len(solution)]]
             distance += np.linalg.norm(city_a - city_b)
-        city_a = self.cities[solution[-1]]
-        city_b = self.cities[solution[0]]
-        distance += np.linalg.norm(city_a - city_b)
-        return distance
+        return int(distance)
 
     def select_parents(self, population):
         if self.selection_operator == "tournament":

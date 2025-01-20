@@ -44,6 +44,28 @@ layout = html.Div([
                 'backgroundColor': '#f8f8f8',  
                 'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
             }),
+
+            html.Label("Neighborhood Structure", style={"fontFamily": "Arial, sans-serif"}),
+            dcc.Dropdown(
+                id="tabu-neighborhood-structure",
+                options=[
+                    {"label": "2-opt Moves", "value": "2-opt"},
+                    {"label": "3-opt Moves", "value": "3-opt"},
+                    {"label": "Shuffle Subtour", "value": "shuffle"}
+                ],
+                value="2-opt",
+                style={
+                    'width': '100%',  
+                    'padding': '12px 20px',  
+                    'margin': '8px 0',  
+                    'boxSizing': 'border-box',  
+                    'border': '2px solid #ccc',  
+                    'borderRadius': '4px',  
+                    'fontSize': '16px',  
+                    'backgroundColor': '#f8f8f8',  
+                    'boxShadow': '0 4px 8px 0 rgba(0, 0, 0, 0.2)'  
+                }
+            ),
         ], style={"margin-bottom": "20px"}),
 
         html.Label("Genetic Algorithm Parameters", style={"fontWeight": "bold", "fontFamily": "Arial, sans-serif"}),
