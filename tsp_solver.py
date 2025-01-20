@@ -81,6 +81,9 @@ class TabuSearchSolver:
             city_a = self.cities[solution[i]]
             city_b = self.cities[solution[(i + 1) % len(solution)]]
             distance += np.linalg.norm(city_a - city_b)
+        city_a = self.cities[solution[-1]]
+        city_b = self.cities[solution[0]]
+        distance += np.linalg.norm(city_a - city_b)
         return distance
 
     def get_neighborhood(self, solution):
@@ -146,6 +149,9 @@ class GeneticAlgorithmSolver:
             city_a = self.cities[solution[i]]
             city_b = self.cities[solution[(i + 1) % len(solution)]]
             distance += np.linalg.norm(city_a - city_b)
+        city_a = self.cities[solution[-1]]
+        city_b = self.cities[solution[0]]
+        distance += np.linalg.norm(city_a - city_b)
         return distance
 
     def select_parents(self, population):

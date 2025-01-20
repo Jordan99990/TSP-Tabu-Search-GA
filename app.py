@@ -30,7 +30,8 @@ app.layout = layout
      Output("distance-box-plot", "figure"),
      Output("execution-time-scatter-plot", "figure"),
      Output("distance-matrix-heatmap", "figure"),
-     Output("iteration-convergence-graph", "figure")], 
+     Output("iteration-convergence-graph", "figure"),
+     Output("best-results-table", "children")], 
     [Input("run-button", "n_clicks")],
     [dash.dependencies.State("tabu-tenure", "value"),
      dash.dependencies.State("tabu-max-iterations", "value"),
@@ -44,6 +45,7 @@ app.layout = layout
      dash.dependencies.State("tabu-params-store", "data"),
      dash.dependencies.State("ga-params-store", "data")]
 )
+
 def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood_size, ga_population, ga_mutation_rate, ga_generations, ga_crossover_operator, ga_selection_operator, ga_mutation_operator, tabu_params_data, ga_params_data):
     if n_clicks == 0:
         return dash.no_update
@@ -123,20 +125,19 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
         iteration_convergence_fig.add_trace(go.Scatter(y=ga_data["history"], mode='lines', name=f"Genetic Algorithm Iteration {i+1}"))
     iteration_convergence_fig.update_layout(title="Convergence Over Iterations", xaxis_title="Iteration", yaxis_title="Distance")
 
-    # Generate results table
     results_table = html.Div([
-            html.H3("Current Benchmark", style={"textAlign": "center"}),
-            html.Table([
-                html.Thead([
-                    html.Tr([html.Th("Algorithm"), html.Th("Best Distance"), html.Th("Best Solution Cities")])
-                ]),
-                html.Tbody([
-                    html.Tr([html.Td("Tabu Search"), html.Td(round(tabu_distance, 2)), html.Td(str(cities[tabu_path]))]),
-                    html.Tr([html.Td("Genetic Algorithm"), html.Td(round(ga_distance, 2)), html.Td(str(cities[ga_path]))]),
-                    html.Tr([html.Td("Optimal TSP"), html.Td(round(avg_optimal_distance, 2)), html.Td(str(cities[best_optimal_path]))])
-                ])
-            ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
-        ])
+        html.H3(f"Current Benchmark Iteration {n_clicks}", style={"textAlign": "center"}),
+        html.Table([
+            html.Thead([
+                html.Tr([html.Th("Algorithm"), html.Th("Best Distance"), html.Th("Best Solution Cities")])
+            ]),
+            html.Tbody([
+                html.Tr([html.Td("Tabu Search", style={"border": "1px solid black"}), html.Td(round(tabu_distance, 2), style={"border": "1px solid black"}), html.Td(str(cities[tabu_path + [tabu_path[0]]]), style={"border": "1px solid black"})]),
+                html.Tr([html.Td("Genetic Algorithm", style={"border": "1px solid black"}), html.Td(round(ga_distance, 2), style={"border": "1px solid black"}), html.Td(str(cities[ga_path + [ga_path[0]]]), style={"border": "1px solid black"})]),
+                html.Tr([html.Td("Optimal TSP", style={"border": "1px solid black"}), html.Td(round(avg_optimal_distance, 2), style={"border": "1px solid black"}), html.Td(str(cities[best_optimal_path]), style={"border": "1px solid black"})])
+            ])
+        ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
+    ])
 
     tabu_params_data.append({"iteration": n_clicks, "tabu_tenure": tabu_tenure, "max_iterations": tabu_max_iterations, "neighborhood_size": tabu_neighborhood_size, "best_distance": round(tabu_distance, 2), "time": tabu_time, "avg_improvement": tabu_avg_improvement, "variance": tabu_variance, "iterations_to_optimal": tabu_iterations_to_optimal, "unique_solutions": tabu_unique_solutions, "history": tabu_history})
     ga_params_data.append({"iteration": n_clicks, "population_size": ga_population, "mutation_rate": ga_mutation_rate, "generations": ga_generations, "crossover_operator": ga_crossover_operator, "selection_operator": ga_selection_operator, "mutation_operator": ga_mutation_operator, "best_distance": round(ga_distance, 2), "time": ga_time, "avg_improvement": ga_avg_improvement, "variance": ga_variance, "iterations_to_optimal": ga_iterations_to_optimal, "population_diversity": ga_population_diversity, "history": ga_history})
@@ -172,7 +173,7 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
                 html.Tr([html.Th("Iteration"), html.Th("Tabu Tenure"), html.Th("Max Iterations"), html.Th("Neighborhood Size"), html.Th("Best Distance"), html.Th("Time (s)"), html.Th("Avg Improvement"), html.Th("Variance"), html.Th("Iterations to Optimal"), html.Th("Unique Solutions")])
             ]),
             html.Tbody([
-                html.Tr([html.Td(row["iteration"]), html.Td(row["tabu_tenure"]), html.Td(row["max_iterations"]), html.Td(row["neighborhood_size"]), html.Td(row["best_distance"]), html.Td(round(row["time"], 2)), html.Td(row["avg_improvement"]), html.Td(row["variance"]), html.Td(row["iterations_to_optimal"]), html.Td(row["unique_solutions"])]) for row in tabu_params_data
+                html.Tr([html.Td(row["iteration"], style={"border": "1px solid black"}), html.Td(row["tabu_tenure"], style={"border": "1px solid black"}), html.Td(row["max_iterations"], style={"border": "1px solid black"}), html.Td(row["neighborhood_size"], style={"border": "1px solid black"}), html.Td(row["best_distance"], style={"border": "1px solid black"}), html.Td(round(row["time"], 2), style={"border": "1px solid black"}), html.Td(row["avg_improvement"], style={"border": "1px solid black"}), html.Td(row["variance"], style={"border": "1px solid black"}), html.Td(row["iterations_to_optimal"], style={"border": "1px solid black"}), html.Td(row["unique_solutions"], style={"border": "1px solid black"})]) for row in tabu_params_data
             ])
         ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
     ])
@@ -184,14 +185,30 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
                 html.Tr([html.Th("Iteration"), html.Th("Population Size"), html.Th("Mutation Rate"), html.Th("Generations"), html.Th("Crossover Operator"), html.Th("Selection Operator"), html.Th("Mutation Operator"), html.Th("Best Distance"), html.Th("Time (s)"), html.Th("Avg Improvement"), html.Th("Variance"), html.Th("Iterations to Optimal"), html.Th("Population Diversity")])
             ]),
             html.Tbody([
-                html.Tr([html.Td(row["iteration"]), html.Td(row["population_size"]), html.Td(row["mutation_rate"]), html.Td(row["generations"]), html.Td(row["crossover_operator"]), html.Td(row["selection_operator"]), html.Td(row["mutation_operator"]), html.Td(row["best_distance"]), html.Td(round(row["time"], 2)), html.Td(row["avg_improvement"]), html.Td(row["variance"]), html.Td(row["iterations_to_optimal"]), html.Td(row["population_diversity"])]) for row in ga_params_data
+                html.Tr([html.Td(row["iteration"], style={"border": "1px solid black"}), html.Td(row["population_size"], style={"border": "1px solid black"}), html.Td(row["mutation_rate"], style={"border": "1px solid black"}), html.Td(row["generations"], style={"border": "1px solid black"}), html.Td(row["crossover_operator"], style={"border": "1px solid black"}), html.Td(row["selection_operator"], style={"border": "1px solid black"}), html.Td(row["mutation_operator"], style={"border": "1px solid black"}), html.Td(row["best_distance"], style={"border": "1px solid black"}), html.Td(round(row["time"], 2), style={"border": "1px solid black"}), html.Td(row["avg_improvement"], style={"border": "1px solid black"}), html.Td(row["variance"], style={"border": "1px solid black"}), html.Td(row["iterations_to_optimal"], style={"border": "1px solid black"}), html.Td(row["population_diversity"], style={"border": "1px solid black"})]) for row in ga_params_data
             ])
         ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
     ])
+    
+    best_tabu = min(tabu_params_data, key=lambda x: x["best_distance"])
+    best_ga = min(ga_params_data, key=lambda x: x["best_distance"])
 
+    best_results_table = html.Div([
+        html.H3("Best Results", style={"textAlign": "center"}),
+        html.Table([
+            html.Thead([
+                html.Tr([html.Th("Algorithm"), html.Th("Best Iteration"), html.Th("Best Distance"), html.Th("Best Solution Cities"), html.Th("Time (s)")])
+            ]),
+            html.Tbody([
+                html.Tr([html.Td("Tabu Search", style={"border": "1px solid black"}), html.Td(best_tabu["iteration"], style={"border": "1px solid black"}), html.Td(best_tabu["best_distance"], style={"border": "1px solid black"}), html.Td(str(cities[tabu_path + [tabu_path[0]]]), style={"border": "1px solid black"}), html.Td(round(best_tabu["time"], 2), style={"border": "1px solid black"})]),
+                html.Tr([html.Td("Genetic Algorithm", style={"border": "1px solid black"}), html.Td(best_ga["iteration"], style={"border": "1px solid black"}), html.Td(best_ga["best_distance"], style={"border": "1px solid black"}), html.Td(str(cities[ga_path + [ga_path[0]]]), style={"border": "1px solid black"}), html.Td(round(best_ga["time"], 2), style={"border": "1px solid black"})])
+            ])
+        ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
+    ])
+    
     return (cities_fig, tabu_result_fig, ga_result_fig, optimal_result_fig, convergence_fig, results_table, 
             tabu_params_table, ga_params_table, tabu_params_data, ga_params_data, distance_distribution_histogram, 
-            distance_box_plot, execution_time_scatter_plot, distance_matrix_heatmap, iteration_convergence_fig)
+            distance_box_plot, execution_time_scatter_plot, distance_matrix_heatmap, iteration_convergence_fig, best_results_table)
 
 if __name__ == "__main__":
     app.run_server(debug=True)

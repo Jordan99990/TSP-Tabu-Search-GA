@@ -183,7 +183,7 @@ layout = html.Div([
         dcc.Graph(id="ga-result-graph", style={"display": "inline-block", "width": "30%"}),
         dcc.Graph(id="optimal-result-graph", style={"display": "inline-block", "width": "30%"}),
         dcc.Graph(id="convergence-graph", style={"display": "block", "margin": "0 auto", "width": "80%"}),
-        dcc.Graph(id="iteration-convergence-graph", style={"display": "block", "margin": "0 auto", "width": "80%"}),  # Add the new graph component here
+        dcc.Graph(id="iteration-convergence-graph", style={"display": "block", "margin": "0 auto", "width": "80%"}), 
         dcc.Graph(id="distance-distribution-histogram", style={"display": "block", "margin": "0 auto", "width": "80%"}),
         dcc.Graph(id="distance-box-plot", style={"display": "block", "margin": "0 auto", "width": "80%"}),
         dcc.Graph(id="execution-time-scatter-plot", style={"display": "block", "margin": "0 auto", "width": "80%"}),
@@ -193,7 +193,9 @@ layout = html.Div([
     html.Div(id="results-table", style={"margin-top": "20px"}),
     html.Div(id="tabu-params-table", style={"margin-top": "20px"}),
     html.Div(id="ga-params-table", style={"margin-top": "20px"}),
+    html.Div(id="best-results-table", style={"margin-top": "20px"}),  
 
     dcc.Store(id="tabu-params-store", data=[]),
     dcc.Store(id="ga-params-store", data=[]),
+    
 ])
