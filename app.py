@@ -163,7 +163,15 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
     execution_time_scatter_plot = go.Figure()
     execution_time_scatter_plot.add_trace(go.Scatter(x=[entry["iteration"] for entry in tabu_params_data], y=[entry["time"] for entry in tabu_params_data], mode='markers', name="Tabu Search"))
     execution_time_scatter_plot.add_trace(go.Scatter(x=[entry["iteration"] for entry in ga_params_data], y=[entry["time"] for entry in ga_params_data], mode='markers', name="Genetic Algorithm"))
-    execution_time_scatter_plot.update_layout(title="Scatter Plot of Execution Times", xaxis_title="Iteration", yaxis_title="Time (s)")
+    execution_time_scatter_plot.update_layout(
+        title="Scatter Plot of Execution Times",
+        xaxis_title="Iteration",
+        yaxis_title="Time (s)",
+        xaxis=dict(
+            tickmode='linear',
+            dtick=1
+        )
+    )
 
     # Heatmap of Distance Matrix
     distance_matrix = tabu_solver.create_distance_matrix()
