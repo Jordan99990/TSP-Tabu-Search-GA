@@ -63,14 +63,10 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
     ga_path, ga_distance, ga_history = ga_solver.solve()
     ga_time = time.time() - start_time
     
-    num_runs = 100
-    optimal_distances = []
-    optimal_paths = []
-    for _ in range(num_runs):
-        optimal_solver = OptimalTSPSolver(cities)
-        optimal_path, optimal_distance = optimal_solver.solve()
-        optimal_paths.append(optimal_path)
-        optimal_distances.append(optimal_distance)
+    optimal_solver = OptimalTSPSolver(cities)
+    optimal_path, optimal_distance = optimal_solver.solve()
+    optimal_paths = [optimal_path]
+    optimal_distances = [optimal_distance]
 
     avg_optimal_distance = np.mean(optimal_distances)
     best_optimal_path = optimal_paths[np.argmin(optimal_distances)]

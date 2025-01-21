@@ -12,13 +12,13 @@ class OptimalTSPSolver:
         num_cities = len(self.cities)
         distance_matrix = self.create_distance_matrix()
 
-        G = nx.Graph()
+        G = nx.complete_graph(num_cities)
         for i in range(num_cities):
             for j in range(i + 1, num_cities):
-                G.add_edge(i, j, weight=distance_matrix[i][j])
+                G[i][j]["weight"] = distance_matrix[i][j]
 
         optimal_path = traveling_salesman_problem(G, cycle=True, method=christofides)
-        optimal_distance = self.calculate_total_distance(optimal_path)
+        optimal_distance = self.calculate_total_distance(optimal_path, distance_matrix)
         return optimal_path, optimal_distance
 
     def create_distance_matrix(self):
@@ -29,12 +29,10 @@ class OptimalTSPSolver:
                 distance_matrix[i][j] = np.linalg.norm(self.cities[i] - self.cities[j])
         return distance_matrix
 
-    def calculate_total_distance(self, path):
+    def calculate_total_distance(self, path, distance_matrix):
         distance = 0
         for i in range(len(path)):
-            city_a = self.cities[path[i]]
-            city_b = self.cities[path[(i + 1) % len(path)]]
-            distance += np.linalg.norm(city_a - city_b)
+            distance += distance_matrix[path[i]][path[(i + 1) % len(path)]]
         return int(distance)
     
 class TabuSearchSolver:
@@ -116,11 +114,13 @@ class TabuSearchSolver:
 
     def shuffle_subtour_neighborhood(self, solution):
         neighborhood = []
-        for i in range(len(solution)):
-            for j in range(i + 1, len(solution)):
-                neighbor = solution[:]
-                random.shuffle(neighbor[i:j])
-                neighborhood.append(neighbor)
+        for _ in range(self.neighborhood_size):
+            neighbor = solution[:]
+            i, j = sorted(random.sample(range(len(solution)), 2))
+            subset = neighbor[i:j]
+            random.shuffle(subset)
+            neighbor[i:j] = subset
+            neighborhood.append(neighbor)
         return neighborhood
     
     def create_distance_matrix(self):
