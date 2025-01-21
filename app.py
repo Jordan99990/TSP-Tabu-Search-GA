@@ -90,23 +90,36 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
     cities_fig.add_trace(go.Scatter(x=cities[:, 0], y=cities[:, 1], mode='markers', name="Cities"))
     cities_fig.update_layout(title="All TSP Cities", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
 
+    tabu_params_data.append({"iteration": n_clicks, "tabu_tenure": tabu_tenure, "max_iterations": tabu_max_iterations, "neighborhood_size": tabu_neighborhood_size, "neighborhood_structure": tabu_neighborhood_structure, "best_distance": round(tabu_distance, 2), "time": tabu_time, "avg_improvement": tabu_avg_improvement, "variance": tabu_variance, "iterations_to_optimal": tabu_iterations_to_optimal, "unique_solutions": tabu_unique_solutions, "history": tabu_history})
+    ga_params_data.append({"iteration": n_clicks, "population_size": ga_population, "mutation_rate": ga_mutation_rate, "generations": ga_generations, "crossover_operator": ga_crossover_operator, "selection_operator": ga_selection_operator, "mutation_operator": ga_mutation_operator, "best_distance": round(ga_distance, 2), "time": ga_time, "avg_improvement": ga_avg_improvement, "variance": ga_variance, "iterations_to_optimal": ga_iterations_to_optimal, "population_diversity": ga_population_diversity, "history": ga_history})
+
+    best_tabu = min(tabu_params_data, key=lambda x: x["best_distance"])
+    best_tabu["best_solution"] = best_tabu.get("best_solution", tabu_path)
+    if round(tabu_distance, 2) == best_tabu["best_distance"]:
+        best_tabu["best_solution"] = tabu_path
+
+    best_ga = min(ga_params_data, key=lambda x: x["best_distance"])
+    best_ga["best_solution"] = best_ga.get("best_solution", ga_path)
+    if round(ga_distance, 2) == best_ga["best_distance"]:
+        best_ga["best_solution"] = ga_path
+
     # Plot results for Tabu Search
     tabu_result_fig = go.Figure()
     tabu_result_fig.add_trace(go.Scatter(x=cities[:, 0], y=cities[:, 1], mode='markers', name="Cities"))
-    tabu_result_fig.add_trace(go.Scatter(x=cities[tabu_path + [tabu_path[0]], 0], y=cities[tabu_path + [tabu_path[0]], 1], mode='lines+markers', name="Tabu Search Route", line=dict(color='blue')))
-    tabu_result_fig.update_layout(title="Tabu Search TSP Path", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
-    
+    tabu_result_fig.add_trace(go.Scatter(x=cities[best_tabu['best_solution'] + [best_tabu['best_solution'][0]], 0], y=cities[best_tabu['best_solution'] + [best_tabu['best_solution'][0]], 1], mode='lines+markers', name="Tabu Search Route", line=dict(color='blue')))
+    tabu_result_fig.update_layout(title=f"Tabu Search TSP Path (<b>Best Distance: {round(best_tabu['best_distance'], 2)}, Iteration: {best_tabu['iteration']}</b>)", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
+
     # Plot results for Genetic Algorithm
     ga_result_fig = go.Figure()
     ga_result_fig.add_trace(go.Scatter(x=cities[:, 0], y=cities[:, 1], mode='markers', name="Cities"))
-    ga_result_fig.add_trace(go.Scatter(x=cities[ga_path + [ga_path[0]], 0], y=cities[ga_path + [ga_path[0]], 1], mode='lines+markers', name="Genetic Algorithm Route", line=dict(color='red')))
-    ga_result_fig.update_layout(title="Genetic Algorithm TSP Path", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
+    ga_result_fig.add_trace(go.Scatter(x=cities[best_ga['best_solution'] + [best_ga['best_solution'][0]], 0], y=cities[best_ga['best_solution'] + [best_ga['best_solution'][0]], 1], mode='lines+markers', name="Genetic Algorithm Route", line=dict(color='red')))
+    ga_result_fig.update_layout(title=f"Genetic Algorithm TSP Path (<b>Best Distance: {round(best_ga['best_distance'], 2)}, Iteration: {best_ga['iteration']}</b>)", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
 
     # Plot results for Optimal TSP
     optimal_result_fig = go.Figure()
     optimal_result_fig.add_trace(go.Scatter(x=cities[:, 0], y=cities[:, 1], mode='markers', name="Cities"))
     optimal_result_fig.add_trace(go.Scatter(x=cities[best_optimal_path][:, 0], y=cities[best_optimal_path][:, 1], mode='lines+markers', name="Optimal TSP Route", line=dict(color='green')))
-    optimal_result_fig.update_layout(title="Optimal TSP Path", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
+    optimal_result_fig.update_layout(title=f"Optimal TSP Path (<b>Best Distance: {round(optimal_distance, 2)}, NetworkX using Christofides method</b>)", xaxis_title="X Coordinate", yaxis_title="Y Coordinate")
 
     # Plot convergence
     convergence_fig = go.Figure()
@@ -120,7 +133,7 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
         iteration_convergence_fig.add_trace(go.Scatter(y=tabu_data["history"], mode='lines', name=f"Tabu Search Iteration {i+1}"))
     for i, ga_data in enumerate(ga_params_data):
         iteration_convergence_fig.add_trace(go.Scatter(y=ga_data["history"], mode='lines', name=f"Genetic Algorithm Iteration {i+1}"))
-    # Add current iteration
+  
     iteration_convergence_fig.add_trace(go.Scatter(y=tabu_history, mode='lines', name=f"Tabu Search Iteration {n_clicks}"))
     iteration_convergence_fig.add_trace(go.Scatter(y=ga_history, mode='lines', name=f"Genetic Algorithm Iteration {n_clicks}"))
     iteration_convergence_fig.update_layout(title="Convergence Over Iterations", xaxis_title="Iteration", yaxis_title="Distance")
@@ -138,9 +151,6 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
             ])
         ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
     ])
-
-    tabu_params_data.append({"iteration": n_clicks, "tabu_tenure": tabu_tenure, "max_iterations": tabu_max_iterations, "neighborhood_size": tabu_neighborhood_size, "neighborhood_structure": tabu_neighborhood_structure, "best_distance": round(tabu_distance, 2), "time": tabu_time, "avg_improvement": tabu_avg_improvement, "variance": tabu_variance, "iterations_to_optimal": tabu_iterations_to_optimal, "unique_solutions": tabu_unique_solutions, "history": tabu_history})
-    ga_params_data.append({"iteration": n_clicks, "population_size": ga_population, "mutation_rate": ga_mutation_rate, "generations": ga_generations, "crossover_operator": ga_crossover_operator, "selection_operator": ga_selection_operator, "mutation_operator": ga_mutation_operator, "best_distance": round(ga_distance, 2), "time": ga_time, "avg_improvement": ga_avg_improvement, "variance": ga_variance, "iterations_to_optimal": ga_iterations_to_optimal, "population_diversity": ga_population_diversity, "history": ga_history})
 
     # Distance Distribution Histogram
     distance_distribution_histogram = go.Figure()
@@ -197,9 +207,6 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
             ])
         ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
     ])
-    
-    best_tabu = min(tabu_params_data, key=lambda x: x["best_distance"])
-    best_ga = min(ga_params_data, key=lambda x: x["best_distance"])
 
     best_results_table = html.Div([
         html.H3("Best Results", style={"textAlign": "center"}),
