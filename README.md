@@ -109,3 +109,10 @@ Genetic Algorithm tabel of iteration to compare results.
 
 ![0](img/3.png)
 Best Results Table: Displays the best results for both algorithms.
+
+
+## Datasets
+
+The datasets used for this project can be found at the following GitHub repository:
+
+[TSPLIB Datasets](https://github.com/mastqe/tsplib)
