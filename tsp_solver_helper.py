@@ -9,35 +9,26 @@ import random
 import networkx as nx
 
 class OptimalTSPSolver:
-    def __init__(self, cities):
-        self.cities = cities
+    def __init__(self, file_path):
+        self.file_path = file_path
 
     def solve(self):
-        num_cities = len(self.cities)
-        distance_matrix = self.create_distance_matrix()
+        result = subprocess.run(["./tsp_solver", self.file_path, "optimal"], capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"Solver stderr: {result.stderr}")
+            raise ValueError(f"Solver error: {result.stderr}")
 
-        G = nx.complete_graph(num_cities)
-        for i in range(num_cities):
-            for j in range(i + 1, num_cities):
-                G[i][j]["weight"] = distance_matrix[i][j]
+        try:
+            output = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            print(f"Solver stdout: {result.stdout}")
+            raise ValueError(f"Failed to parse JSON output: {result.stdout}")
 
-        optimal_path = traveling_salesman_problem(G, cycle=True, method=christofides)
-        optimal_distance = self.calculate_total_distance(optimal_path, distance_matrix)
-        return optimal_path, optimal_distance
-
-    def create_distance_matrix(self):
-        num_cities = len(self.cities)
-        distance_matrix = np.zeros((num_cities, num_cities))
-        for i in range(num_cities):
-            for j in range(num_cities):
-                distance_matrix[i][j] = np.linalg.norm(self.cities[i] - self.cities[j])
-        return distance_matrix
-
-    def calculate_total_distance(self, path, distance_matrix):
-        distance = 0
-        for i in range(len(path)):
-            distance += distance_matrix[path[i]][path[(i + 1) % len(path)]]
-        return int(distance)
+        optimal_solution = output["best_solution"]
+        optimal_distance = output["best_distance"]
+        cities = np.array([(city["x"], city["y"]) for city in output["cities"]])
+        return optimal_solution, optimal_distance, cities
 
 def read_tsp(file_path):
     with open(file_path, 'r') as file:
@@ -55,20 +46,15 @@ def read_tsp(file_path):
         if node_coord_section:
             parts = line.split()
             if len(parts) == 3:
-                cities.append((int(parts[1]), int(parts[2])))
+                cities.append((float(parts[1]), float(parts[2])))
 
-    cities = np.array(cities)
+    cities = np.array(cities).astype(int)
     return cities
 
 def run_cpp_solver(file_path, solver_type, params):
     command = ["./tsp_solver", file_path, solver_type] + [str(param) for param in params]
     
     result = subprocess.run(command, capture_output=True, text=True)
-    
-    # print("Command executed:", " ".join(command))  
-    # print("Command output:", result.stdout)  
-    # if result.stderr:
-    #     print("Command error:", result.stderr)  
     
     try:
         output = json.loads(result.stdout)
@@ -104,20 +90,17 @@ def run_genetic_algorithm(file_path, population_size, mutation_rate, generations
     }
 
 def run_tsp_solvers(file_path, tabu_tenure=15, max_iterations=100, neighborhood_size=15, neighborhood_structure="2-opt", population_size=250, mutation_rate=0.05, generations=100, crossover_operator="pmx", selection_operator="tournament", mutation_operator="swap"):
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        start_time = time.time()
-        tabu_future = executor.submit(run_tabu_search, file_path, tabu_tenure, max_iterations, neighborhood_size, neighborhood_structure)
-        ga_future = executor.submit(run_genetic_algorithm, file_path, population_size, mutation_rate, generations, crossover_operator, selection_operator, mutation_operator)
-        
-        tabu_start_time = time.time()
-        tabu_result = tabu_future.result()
-        tabu_end_time = time.time()
-        
-        ga_start_time = time.time()
-        ga_result = ga_future.result()
-        ga_end_time = time.time()
-        
-        total_time = time.time() - start_time
+    start_time = time.time()
+    
+    tabu_start_time = time.time()
+    tabu_result = run_tabu_search(file_path, tabu_tenure, max_iterations, neighborhood_size, neighborhood_structure)
+    tabu_end_time = time.time()
+    
+    ga_start_time = time.time()
+    ga_result = run_genetic_algorithm(file_path, population_size, mutation_rate, generations, crossover_operator, selection_operator, mutation_operator)
+    ga_end_time = time.time()
+    
+    total_time = time.time() - start_time
 
     tabu_time = tabu_end_time - tabu_start_time
     ga_time = ga_end_time - ga_start_time

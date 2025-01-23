@@ -11,6 +11,8 @@
 #include <nlohmann/json.hpp>
 #include <omp.h>
 #include <set>
+#include <utility>
+#include <numeric>
 
 using namespace std;
 using json = nlohmann::json;
@@ -19,24 +21,28 @@ struct City {
     int x, y;
 };
 
+void to_json(json& j, const City& city) {
+    j = json{{"x", city.x}, {"y", city.y}};
+}
+
 struct TabuSearchResult {
-    std::vector<int> best_solution;
+    vector<int> best_solution;
     int best_distance;
     double avg_improvement;
     double variance;
     int iterations_to_optimal;
     int unique_solutions;
-    std::vector<int> history; 
+    vector<int> history; 
 };
 
 struct GeneticAlgorithmResult {
-    std::vector<int> best_solution;
+    vector<int> best_solution;
     int best_distance;
     double avg_improvement;
     double variance;
     int iterations_to_optimal;
     int unique_solutions;
-    std::vector<int> history; 
+    vector<int> history; 
 };
 
 vector<City> read_tsp(const string& file_path) {
@@ -55,9 +61,10 @@ vector<City> read_tsp(const string& file_path) {
         }
         if (node_coord_section) {
             istringstream iss(line);
-            int index, x, y;
+            int index;
+            double x, y;
             iss >> index >> x >> y;
-            cities.push_back({x, y});
+            cities.push_back({static_cast<int>(x), static_cast<int>(y)});
         }
     }
     return cities;
@@ -66,6 +73,148 @@ vector<City> read_tsp(const string& file_path) {
 int calculate_distance(const City& a, const City& b) {
     return static_cast<int>(round(sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2))));
 }
+
+class OptimalTSPSolver {
+public:
+    OptimalTSPSolver(const vector<pair<double, double>>& cities) : cities(cities) {}
+
+    pair<vector<int>, int> solve() {
+        int num_cities = cities.size();
+        auto distance_matrix = create_distance_matrix(num_cities);
+
+        vector<vector<int>> mst = find_minimum_spanning_tree(distance_matrix, num_cities);
+        vector<int> perfect_matching = find_perfect_matching(distance_matrix, mst, num_cities);
+        vector<int> eulerian_path = find_eulerian_path(mst, perfect_matching, num_cities);
+        vector<int> optimal_path = make_hamiltonian(eulerian_path);
+
+        int optimal_distance = calculate_total_distance(optimal_path, distance_matrix);
+        return {optimal_path, optimal_distance};
+    }
+
+private:
+    vector<pair<double, double>> cities;
+
+    vector<vector<double>> create_distance_matrix(int num_cities) {
+        vector<vector<double>> distance_matrix(num_cities, vector<double>(num_cities, 0.0));
+        for (int i = 0; i < num_cities; ++i) {
+            for (int j = 0; j < num_cities; ++j) {
+                distance_matrix[i][j] = hypot(cities[i].first - cities[j].first, cities[i].second - cities[j].second);
+            }
+        }
+        return distance_matrix;
+    }
+
+    vector<vector<int>> find_minimum_spanning_tree(const vector<vector<double>>& distance_matrix, int num_cities) {
+        vector<vector<int>> mst(num_cities);
+        vector<bool> visited(num_cities, false);
+        vector<double> min_distance(num_cities, numeric_limits<double>::infinity());
+        vector<int> parent(num_cities, -1);
+
+        min_distance[0] = 0;
+        for (int i = 0; i < num_cities; ++i) {
+            int u = -1;
+            for (int v = 0; v < num_cities; ++v) {
+                if (!visited[v] && (u == -1 || min_distance[v] < min_distance[u])) {
+                    u = v;
+                }
+            }
+
+            visited[u] = true;
+            if (parent[u] != -1) {
+                mst[u].push_back(parent[u]);
+                mst[parent[u]].push_back(u);
+            }
+
+            for (int v = 0; v < num_cities; ++v) {
+                if (!visited[v] && distance_matrix[u][v] < min_distance[v]) {
+                    min_distance[v] = distance_matrix[u][v];
+                    parent[v] = u;
+                }
+            }
+        }
+        return mst;
+    }
+
+    vector<int> find_perfect_matching(const vector<vector<double>>& distance_matrix, const vector<vector<int>>& mst, int num_cities) {
+        vector<int> odd_degree_nodes;
+        for (int i = 0; i < num_cities; ++i) {
+            if (mst[i].size() % 2 == 1) {
+                odd_degree_nodes.push_back(i);
+            }
+        }
+
+        vector<bool> matched(odd_degree_nodes.size(), false);
+        vector<int> matching;
+
+        for (size_t i = 0; i < odd_degree_nodes.size(); ++i) {
+            if (!matched[i]) {
+                double min_distance = numeric_limits<double>::infinity();
+                int best_match = -1;
+
+                for (size_t j = i + 1; j < odd_degree_nodes.size(); ++j) {
+                    if (!matched[j] && distance_matrix[odd_degree_nodes[i]][odd_degree_nodes[j]] < min_distance) {
+                        min_distance = distance_matrix[odd_degree_nodes[i]][odd_degree_nodes[j]];
+                        best_match = j;
+                    }
+                }
+
+                if (best_match != -1) {
+                    matched[i] = matched[best_match] = true;
+                    matching.push_back(odd_degree_nodes[i]);
+                    matching.push_back(odd_degree_nodes[best_match]);
+                }
+            }
+        }
+
+        return matching;
+    }
+
+    vector<int> find_eulerian_path(const vector<vector<int>>& mst, const vector<int>& perfect_matching, int num_cities) {
+        vector<vector<int>> graph = mst;
+
+        for (size_t i = 0; i < perfect_matching.size(); i += 2) {
+            graph[perfect_matching[i]].push_back(perfect_matching[i + 1]);
+            graph[perfect_matching[i + 1]].push_back(perfect_matching[i]);
+        }
+
+        vector<int> eulerian_path;
+        vector<bool> visited(num_cities, false);
+        dfs(0, graph, visited, eulerian_path);
+        return eulerian_path;
+    }
+
+    void dfs(int node, const vector<vector<int>>& graph, vector<bool>& visited, vector<int>& path) {
+        visited[node] = true;
+        path.push_back(node);
+
+        for (int neighbor : graph[node]) {
+            if (!visited[neighbor]) {
+                dfs(neighbor, graph, visited, path);
+            }
+        }
+    }
+
+    vector<int> make_hamiltonian(const vector<int>& eulerian_path) {
+        vector<bool> visited(cities.size(), false);
+        vector<int> hamiltonian_path;
+
+        for (int node : eulerian_path) {
+            if (!visited[node]) {
+                visited[node] = true;
+                hamiltonian_path.push_back(node);
+            }
+        }
+        return hamiltonian_path;
+    }
+
+    int calculate_total_distance(const vector<int>& path, const vector<vector<double>>& distance_matrix) {
+        int distance = 0;
+        for (size_t i = 0; i < path.size(); ++i) {
+            distance += static_cast<int>(distance_matrix[path[i]][path[(i + 1) % path.size()]]);
+        }
+        return distance;
+    }
+};
 
 class TabuSearchSolver {
 public:
@@ -165,39 +314,73 @@ private:
 
     vector<vector<int>> two_opt_neighborhood(const vector<int>& solution) {
         vector<vector<int>> neighborhood;
-        for (size_t i = 0; i < solution.size(); ++i) {
-            for (size_t j = i + 1; j < solution.size(); ++j) {
-                vector<int> neighbor = solution;
-                reverse(neighbor.begin() + i, neighbor.begin() + j);
-                neighborhood.push_back(neighbor);
+        size_t n = solution.size();
+        neighborhood.reserve(n * (n - 1) / 2); 
+
+        #pragma omp parallel
+        {
+            vector<vector<int>> local_neighborhood;
+            local_neighborhood.reserve(n * (n - 1) / 2 / omp_get_num_threads());
+
+            #pragma omp for collapse(2) nowait
+            for (size_t i = 0; i < n - 1; ++i) {
+                for (size_t j = i + 1; j < n; ++j) {
+                    vector<int> neighbor = solution;
+                    reverse(neighbor.begin() + i, neighbor.begin() + j + 1);
+                    local_neighborhood.push_back(move(neighbor)); 
+                }
             }
+
+            #pragma omp critical
+            neighborhood.insert(neighborhood.end(), local_neighborhood.begin(), local_neighborhood.end());
         }
+
         return neighborhood;
     }
 
     vector<vector<int>> three_opt_neighborhood(const vector<int>& solution) {
         vector<vector<int>> neighborhood;
-        for (size_t i = 0; i < solution.size(); ++i) {
-            for (size_t j = i + 1; j < solution.size(); ++j) {
-                for (size_t k = j + 1; k < solution.size(); ++k) {
-                    vector<int> neighbor = solution;
-                    reverse(neighbor.begin() + i, neighbor.begin() + j);
-                    reverse(neighbor.begin() + j, neighbor.begin() + k);
-                    neighborhood.push_back(neighbor);
+        size_t n = solution.size();
+        neighborhood.reserve(n * (n - 1) * (n - 2) / 6);
+
+        #pragma omp parallel
+        {
+            vector<vector<int>> local_neighborhood;
+            local_neighborhood.reserve(n * (n - 1) * (n - 2) / 6 / omp_get_num_threads());
+
+            #pragma omp for collapse(3) nowait
+            for (size_t i = 0; i < n - 2; ++i) {
+                for (size_t j = i + 1; j < n - 1; ++j) {
+                    for (size_t k = j + 1; k < n; ++k) {
+                        vector<int> neighbor = solution;
+                        reverse(neighbor.begin() + i, neighbor.begin() + j + 1);
+                        reverse(neighbor.begin() + j + 1, neighbor.begin() + k + 1);
+                        local_neighborhood.push_back(move(neighbor)); 
+                    }
                 }
             }
+
+            #pragma omp critical
+            neighborhood.insert(neighborhood.end(), local_neighborhood.begin(), local_neighborhood.end());
         }
+
         return neighborhood;
     }
 
     vector<vector<int>> shuffle_subtour_neighborhood(const vector<int>& solution) {
         vector<vector<int>> neighborhood;
-        for (int i = 0; i < neighborhood_size; ++i) {
+        size_t n = solution.size();
+        neighborhood.reserve(n * (n - 1) / 2); 
+
+        random_device rd;
+        mt19937 g(rd());
+
+        #pragma omp parallel for
+        for (size_t i = 0; i < n; ++i) {
             vector<int> neighbor = solution;
-            int start = uniform_int_distribution<int>(0, solution.size() - 1)(rng);
-            int end = uniform_int_distribution<int>(start, solution.size() - 1)(rng);
-            shuffle(neighbor.begin() + start, neighbor.begin() + end, rng);
-            neighborhood.push_back(neighbor);
+            shuffle(neighbor.begin(), neighbor.end(), g);
+            #pragma omp critical
+            neighborhood.push_back(move(neighbor)); 
         }
         return neighborhood;
     }
@@ -224,22 +407,22 @@ public:
 
     GeneticAlgorithmResult solve() {
         int num_cities = cities.size();
-        std::vector<std::vector<int>> population(population_size);
+        vector<vector<int>> population(population_size);
         for (auto& solution : population) {
             solution = create_random_solution();
         }
 
-        std::vector<int> best_solution = *std::min_element(population.begin(), population.end(), [&](const std::vector<int>& a, const std::vector<int>& b) {
+        vector<int> best_solution = *std::min_element(population.begin(), population.end(), [&](const std::vector<int>& a, const std::vector<int>& b) {
             return calculate_total_distance(a) < calculate_total_distance(b);
         });
         int best_distance = calculate_total_distance(best_solution);
-        std::vector<int> ga_history = {best_distance};
+        vector<int> ga_history = {best_distance};
 
         double total_improvement = 0.0;
         int iterations_to_optimal = 0;
 
         for (int gen = 0; gen < generations; ++gen) {
-            std::vector<std::vector<int>> new_population;
+            vector<vector<int>> new_population;
 
             while (new_population.size() < population_size) {
                 auto [parent1, parent2] = select_parents(population);
@@ -250,7 +433,7 @@ public:
 
             population = new_population;
 
-            std::vector<int> current_best_solution = *std::min_element(population.begin(), population.end(), [&](const std::vector<int>& a, const std::vector<int>& b) {
+            vector<int> current_best_solution = *std::min_element(population.begin(), population.end(), [&](const std::vector<int>& a, const std::vector<int>& b) {
                 return calculate_total_distance(a) < calculate_total_distance(b);
             });
             int current_best_distance = calculate_total_distance(current_best_solution);
@@ -413,7 +596,7 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-    if (argc < 3) {
+    if (argc < 2) {
         cerr << "Usage: " << argv[0] << " <tsp_file> <solver_type> [params...]" << endl;
         return 1;
     }
@@ -422,7 +605,21 @@ int main(int argc, char* argv[]) {
     string solver_type = argv[2];
     vector<City> cities = read_tsp(file_path);
 
-    if (solver_type == "tabu") {
+    if (solver_type == "optimal") {
+        vector<pair<double, double>> city_pairs;
+        for (const auto& city : cities) {
+            city_pairs.emplace_back(city.x, city.y);
+        }
+
+        OptimalTSPSolver optimal_solver(city_pairs);
+        auto [optimal_solution, optimal_distance] = optimal_solver.solve();
+        json output = {
+            {"best_distance", optimal_distance},
+            {"best_solution", optimal_solution},
+            {"cities", cities}
+        };
+        cout << output.dump() << endl;
+    } else if (solver_type == "tabu") {
         int tabu_tenure = stoi(argv[3]);
         int max_iterations = stoi(argv[4]);
         int neighborhood_size = stoi(argv[5]);
