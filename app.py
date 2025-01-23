@@ -9,7 +9,7 @@ from ui import layout
 app = dash.Dash(__name__)
 app.title = "TSP Comparison: Tabu Search vs Genetic Algorithm"
 
-file_path = "a280.tsp"
+file_path = "u724.tsp"
 
 optimal_solution = None
 optimal_distance = None

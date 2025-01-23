@@ -243,7 +243,7 @@ public:
         int iterations_to_optimal = 0;
         double total_improvement = 0.0;
         int no_improvement_iterations = 0;
-        const int max_no_improvement_iterations = 50;
+        const int max_no_improvement_iterations = 5;
 
         for (int iter = 0; iter < max_iterations; ++iter) {
             vector<vector<int>> neighborhood = get_neighborhood(current_solution);
@@ -444,6 +444,8 @@ public:
 
         double total_improvement = 0.0;
         int iterations_to_optimal = 0;
+        int stagnation_counter = 0;
+        const int max_stagnation = 5000;
 
         vector<vector<int>> new_population(population_size);
 
@@ -461,6 +463,9 @@ public:
 
             population = new_population;
 
+            double diversity = calculate_population_diversity(population);
+            mutation_rate = adjust_mutation_rate(diversity);
+
             #pragma omp parallel for reduction(min:best_distance)
             for (int i = 0; i < population.size(); ++i) {
                 int current_distance = calculate_total_distance(population[i]);
@@ -471,18 +476,25 @@ public:
                             best_solution = population[i];
                             best_distance = current_distance;
                             iterations_to_optimal = gen + 1;
+                            stagnation_counter = 0; 
                         }
                     }
                 }
             }
 
-            // Adaptive mutation rate
-            if (gen > generations / 2 && calculate_unique_solutions(ga_history) < population_size / 2) {
-                mutation_rate = min(mutation_rate * 1.1, 0.5); // Increase mutation rate up to 50%
-            }
-
             total_improvement += (ga_history.back() - best_distance);
             ga_history.push_back(best_distance);
+
+            if (ga_history.size() > 1 && ga_history.back() == ga_history[ga_history.size() - 2]) {
+                stagnation_counter++;
+            } else {
+                stagnation_counter = 0;
+            }
+
+            if (stagnation_counter >= max_stagnation) {
+                population = restart_population();
+                stagnation_counter = 0;
+            }
         }
 
         double avg_improvement = total_improvement / generations;
@@ -615,6 +627,20 @@ private:
         return solution;
     }
 
+    double calculate_population_diversity(const vector<vector<int>>& population) {
+        set<vector<int>> unique_individuals(population.begin(), population.end());
+        return static_cast<double>(unique_individuals.size()) / population.size();
+    }
+
+    double adjust_mutation_rate(double diversity) {
+        if (diversity < 0.2) {
+            return min(mutation_rate * 1.1, 0.5); 
+        } else if (diversity > 0.8) {
+            return max(mutation_rate * 0.9, 0.01); 
+        }
+        return mutation_rate; 
+    }
+
     double calculate_variance(const std::vector<int>& history) {
         double mean = std::accumulate(history.begin(), history.end(), 0.0) / history.size();
         double variance = 0.0;
@@ -627,6 +653,14 @@ private:
     int calculate_unique_solutions(const std::vector<int>& history) {
         std::set<int> unique_solutions(history.begin(), history.end());
         return unique_solutions.size();
+    }
+
+    vector<vector<int>> restart_population() {
+        vector<vector<int>> new_population(population_size);
+        for (auto& solution : new_population) {
+            solution = create_random_solution();
+        }
+        return new_population;
     }
 };
 
