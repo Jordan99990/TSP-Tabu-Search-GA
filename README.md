@@ -56,19 +56,50 @@ Dash is a productive Python framework for building web applications. It is used 
 ## Screenshots
 
 ![0](img/0.png)
+The UI written in Dash (inputs are Tabu Tenure, Max Iterations, Neighborhood Size and Neighborhood Structure for Tabu Search)
+
+(Population size, mutation rate, generations, crossover operator, selection operator, mutation operator)
+
 ![0](img/5.png)
+Cities Graph: Displays all the cities in the TSP problem as points on a 2D plane.
+
 ![0](img/12.png)
+TS, GA, Shows the best path found by Tabu Search, GA, Optimal results: and the "optimal" path computed using Christofides method.
+
 ![0](img/11.png)
+
+Convergence Graph: Compares the convergence of Tabu Search and Genetic Algorithm on the current iteration.
 ![0](img/10.png)
+Convergence Graph: Compares the convergence of Tabu Search and Genetic Algorithm over iterations.
+
 ![0](img/9.png)
+Distance Distribution Histogram: Shows the distribution of best distances found by both algorithms.
+
 ![0](img/6.png)
+Box Plot: Compares the distribution of best distances using box plots.
+
+
 ![0](img/7.png)
+Box Plot: Distributions for Tabu Search.
+
+
 ![0](img/8.png)
+Box Plot: Distributions for Genetic Algorithm.
+
 ![0](img/13.png)
+Scatter Plot: Compares execution time for the current iteration GA vs TS.
+
 ![0](img/4.png)
+Heat Map: Distance Matrix visualized.
+
 ![0](img/14.png)
+Current found solution.
 
 ![0](img/2.png)
+Tabu Search tabel of iteration to compare results.
+
 ![0](img/1.png)
+Genetic Algorithm tabel of iteration to compare results.
 
 ![0](img/3.png)
+Best Results Table: Displays the best results for both algorithms.
