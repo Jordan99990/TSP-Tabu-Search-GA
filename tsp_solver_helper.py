@@ -2,11 +2,8 @@ import subprocess
 import json
 import time
 import concurrent.futures
-from networkx.algorithms.approximation import traveling_salesman_problem
-from networkx.algorithms.approximation.traveling_salesman import christofides
 import numpy as np
 import random
-import networkx as nx
 
 class OptimalTSPSolver:
     def __init__(self, file_path):
@@ -29,27 +26,6 @@ class OptimalTSPSolver:
         optimal_distance = output["best_distance"]
         cities = np.array([(city["x"], city["y"]) for city in output["cities"]])
         return optimal_solution, optimal_distance, cities
-
-def read_tsp(file_path):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-    node_coord_section = False
-    cities = []
-
-    for line in lines:
-        if line.startswith("NODE_COORD_SECTION"):
-            node_coord_section = True
-            continue
-        if line.startswith("EOF"):
-            break
-        if node_coord_section:
-            parts = line.split()
-            if len(parts) == 3:
-                cities.append((float(parts[1]), float(parts[2])))
-
-    cities = np.array(cities).astype(int)
-    return cities
 
 def run_cpp_solver(file_path, solver_type, params):
     command = ["./tsp_solver", file_path, solver_type] + [str(param) for param in params]
@@ -92,18 +68,20 @@ def run_genetic_algorithm(file_path, population_size, mutation_rate, generations
 def run_tsp_solvers(file_path, tabu_tenure=15, max_iterations=100, neighborhood_size=15, neighborhood_structure="2-opt", population_size=250, mutation_rate=0.05, generations=100, crossover_operator="pmx", selection_operator="tournament", mutation_operator="swap"):
     start_time = time.time()
     
-    tabu_start_time = time.time()
-    tabu_result = run_tabu_search(file_path, tabu_tenure, max_iterations, neighborhood_size, neighborhood_structure)
-    tabu_end_time = time.time()
-    
-    ga_start_time = time.time()
-    ga_result = run_genetic_algorithm(file_path, population_size, mutation_rate, generations, crossover_operator, selection_operator, mutation_operator)
-    ga_end_time = time.time()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        tabu_start_time = time.time()
+        tabu_future = executor.submit(run_tabu_search, file_path, tabu_tenure, max_iterations, neighborhood_size, neighborhood_structure)
+        
+        ga_future = executor.submit(run_genetic_algorithm, file_path, population_size, mutation_rate, generations, crossover_operator, selection_operator, mutation_operator)
+        
+        tabu_result = tabu_future.result()
+        tabu_time = time.time() - tabu_start_time
+        
+        ga_start_time = time.time()
+        ga_result = ga_future.result()
+        ga_time = time.time() - ga_start_time
     
     total_time = time.time() - start_time
-
-    tabu_time = tabu_end_time - tabu_start_time
-    ga_time = ga_end_time - ga_start_time
 
     tabu_distance = tabu_result['best_distance']
     tabu_solution = tabu_result['best_solution']

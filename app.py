@@ -9,10 +9,11 @@ from ui import layout
 app = dash.Dash(__name__)
 app.title = "TSP Comparison: Tabu Search vs Genetic Algorithm"
 
-file_path = "rat575.tsp"
+file_path = "a280.tsp"
 
 optimal_solution = None
 optimal_distance = None
+cities = None
 
 app.layout = layout
 
@@ -49,7 +50,7 @@ app.layout = layout
 )
 
 def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood_size, tabu_neighborhood_structure, ga_population, ga_mutation_rate, ga_generations, ga_crossover_operator, ga_selection_operator, ga_mutation_operator, tabu_params_data, ga_params_data):
-    global optimal_solution, optimal_distance
+    global optimal_solution, optimal_distance, cities
     if n_clicks == 0:
         return dash.no_update
 
@@ -61,7 +62,6 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
     if optimal_solution is None or optimal_distance is None:
         optimal_solver = OptimalTSPSolver(file_path)
         optimal_solution, optimal_distance, cities = optimal_solver.solve()
- 
     
     cities_fig = go.Figure()
     cities_fig.add_trace(go.Scatter(x=cities[:, 0], y=cities[:, 1], mode='markers', name="Cities"))
