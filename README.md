@@ -80,12 +80,12 @@ Box Plot: Compares the distribution of best distances using box plots.
 
 
 <div style="text-align: center;">
-    <img src="img/7.png" alt="Box Plot: Distributions for Tabu Search">
+    <img src="img/7.png" alt="Box Plot: Distributions for Tabu Search" style="display: block; margin: 0 auto;">
     <p>Box Plot: Distributions for Tabu Search</p>
 </div>
 
 <div style="text-align: center;">
-    <img src="img/8.png" alt="Box Plot: Distributions for Genetic Algorithm">
+    <img src="img/8.png" alt="Box Plot: Distributions for Genetic Algorithm" style="display: block; margin: 0 auto;">
     <p>Box Plot: Distributions for Genetic Algorithm</p>
 </div>
 
