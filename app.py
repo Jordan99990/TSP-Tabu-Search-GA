@@ -173,8 +173,8 @@ def update_results(n_clicks, tabu_tenure, tabu_max_iterations, tabu_neighborhood
                 html.Tr([html.Th("Algorithm"), html.Th("Best Distance"), html.Th("Best Solution Cities")])
             ]),
             html.Tbody([
-                html.Tr([html.Td("Tabu Search", style={"border": "1px solid black"}), html.Td(round(tabu_result["distance"], 2), style={"border": "1px solid black"}), html.Td(str(cities[tabu_result["best_solution"] + [tabu_result["best_solution"][0]]]), style={"border": "1px solid black"})]),
-                html.Tr([html.Td("Genetic Algorithm", style={"border": "1px solid black"}), html.Td(round(ga_result["distance"], 2), style={"border": "1px solid black"}), html.Td(str(cities[ga_result["best_solution"] + [ga_result["best_solution"][0]]]), style={"border": "1px solid black"})])
+                html.Tr([html.Td("Tabu Search", style={"border": "1px solid black"}), html.Td(round(tabu_result["distance"], 2), style={"border": "1px solid black"}), html.Td(str(cities[tabu_result["best_solution"] + [tabu_result["best_solution"][0]]].tolist()), style={"border": "1px solid black"})]),
+                html.Tr([html.Td("Genetic Algorithm", style={"border": "1px solid black"}), html.Td(round(ga_result["distance"], 2), style={"border": "1px solid black"}), html.Td(str(cities[ga_result["best_solution"] + [ga_result["best_solution"][0]]].tolist()), style={"border": "1px solid black"})])
             ])
         ], style={"width": "100%", "border": "1px solid black", "border-collapse": "collapse", "margin-top": "20px", "text-align": "center"})
     ])

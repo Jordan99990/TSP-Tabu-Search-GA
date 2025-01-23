@@ -13,6 +13,7 @@
 #include <set>
 #include <utility>
 #include <numeric>
+#include <unordered_set>
 
 using namespace std;
 using json = nlohmann::json;
@@ -216,34 +217,44 @@ private:
     }
 };
 
+string solution_to_string(const vector<int>& solution) {
+    stringstream ss;
+    for (int city : solution) {
+        ss << city << ",";
+    }
+    return ss.str();
+}
+
 class TabuSearchSolver {
 public:
-    TabuSearchSolver(const vector<City>& cities, int tabu_tenure, int max_iterations, int neighborhood_size, const string& neighborhood_structure)
-        : cities(cities), tabu_tenure(tabu_tenure), max_iterations(max_iterations), neighborhood_size(neighborhood_size), neighborhood_structure(neighborhood_structure) {}
-    
+    TabuSearchSolver(const vector<City>& cities, int initial_tabu_tenure, int max_iterations, int neighborhood_size, const string& neighborhood_structure)
+        : cities(cities), initial_tabu_tenure(initial_tabu_tenure), tabu_tenure(initial_tabu_tenure), max_iterations(max_iterations), neighborhood_size(neighborhood_size), neighborhood_structure(neighborhood_structure) {}
+
     TabuSearchResult solve() {
         int num_cities = cities.size();
-        std::vector<int> current_solution(num_cities);
-        std::iota(current_solution.begin(), current_solution.end(), 0);
-        std::shuffle(current_solution.begin(), current_solution.end(), rng);
-        std::vector<int> best_solution = current_solution;
+        vector<int> current_solution(num_cities);
+        iota(current_solution.begin(), current_solution.end(), 0);
+        shuffle(current_solution.begin(), current_solution.end(), rng);
+        vector<int> best_solution = current_solution;
         int best_distance = calculate_total_distance(best_solution);
-        std::vector<std::vector<int>> tabu_list;
-        std::vector<int> tabu_history = {best_distance};
+        unordered_set<string> tabu_list;
+        vector<int> tabu_history = {best_distance};
 
         int iterations_to_optimal = 0;
         double total_improvement = 0.0;
+        int no_improvement_iterations = 0;
+        const int max_no_improvement_iterations = 50;
 
         for (int iter = 0; iter < max_iterations; ++iter) {
-            std::vector<std::vector<int>> neighborhood = get_neighborhood(current_solution);
-            neighborhood.erase(std::remove_if(neighborhood.begin(), neighborhood.end(), [&](const std::vector<int>& sol) {
-                return std::find(tabu_list.begin(), tabu_list.end(), sol) != tabu_list.end();
+            vector<vector<int>> neighborhood = get_neighborhood(current_solution);
+            neighborhood.erase(remove_if(neighborhood.begin(), neighborhood.end(), [&](const vector<int>& sol) {
+                return tabu_list.find(solution_to_string(sol)) != tabu_list.end();
             }), neighborhood.end());
 
             if (neighborhood.empty()) break;
 
-            int min_distance = std::numeric_limits<int>::max();
-            std::vector<int> best_neighbor;
+            int min_distance = numeric_limits<int>::max();
+            vector<int> best_neighbor;
 
             #pragma omp parallel for
             for (int i = 0; i < neighborhood.size(); ++i) {
@@ -264,9 +275,18 @@ public:
                 best_solution = current_solution;
                 best_distance = current_distance;
                 iterations_to_optimal = iter + 1;
+                tabu_tenure = max(initial_tabu_tenure / 2, 1);
+                no_improvement_iterations = 0;
+            } else {
+                tabu_tenure = min(initial_tabu_tenure * 2, num_cities);
+                no_improvement_iterations++;
             }
 
-            tabu_list.push_back(current_solution);
+            if (no_improvement_iterations >= max_no_improvement_iterations) {
+                break;
+            }
+
+            tabu_list.insert(solution_to_string(current_solution));
             if (tabu_list.size() > tabu_tenure) {
                 tabu_list.erase(tabu_list.begin());
             }
@@ -284,6 +304,7 @@ public:
 
 private:
     vector<City> cities;
+    int initial_tabu_tenure;
     int tabu_tenure;
     int max_iterations;
     int neighborhood_size;
@@ -313,22 +334,23 @@ private:
     }
 
     vector<vector<int>> two_opt_neighborhood(const vector<int>& solution) {
-        vector<vector<int>> neighborhood;
         size_t n = solution.size();
-        neighborhood.reserve(n * (n - 1) / 2); 
+        vector<vector<int>> neighborhood;
+        uniform_int_distribution<size_t> dist(0, n - 1);
 
         #pragma omp parallel
         {
             vector<vector<int>> local_neighborhood;
-            local_neighborhood.reserve(n * (n - 1) / 2 / omp_get_num_threads());
+            size_t thread_id = omp_get_thread_num();
+            size_t num_threads = omp_get_num_threads();
 
-            #pragma omp for collapse(2) nowait
-            for (size_t i = 0; i < n - 1; ++i) {
-                for (size_t j = i + 1; j < n; ++j) {
-                    vector<int> neighbor = solution;
-                    reverse(neighbor.begin() + i, neighbor.begin() + j + 1);
-                    local_neighborhood.push_back(move(neighbor)); 
-                }
+            for (size_t i = thread_id; i < neighborhood_size; i += num_threads) {
+                size_t a = dist(rng);
+                size_t b = dist(rng);
+                if (a > b) swap(a, b);
+                vector<int> neighbor = solution;
+                reverse(neighbor.begin() + a, neighbor.begin() + b + 1);
+                local_neighborhood.push_back(move(neighbor));
             }
 
             #pragma omp critical
@@ -339,25 +361,27 @@ private:
     }
 
     vector<vector<int>> three_opt_neighborhood(const vector<int>& solution) {
-        vector<vector<int>> neighborhood;
         size_t n = solution.size();
-        neighborhood.reserve(n * (n - 1) * (n - 2) / 6);
+        vector<vector<int>> neighborhood;
+        uniform_int_distribution<size_t> dist(0, n - 1);
 
         #pragma omp parallel
         {
             vector<vector<int>> local_neighborhood;
-            local_neighborhood.reserve(n * (n - 1) * (n - 2) / 6 / omp_get_num_threads());
+            size_t thread_id = omp_get_thread_num();
+            size_t num_threads = omp_get_num_threads();
 
-            #pragma omp for collapse(3) nowait
-            for (size_t i = 0; i < n - 2; ++i) {
-                for (size_t j = i + 1; j < n - 1; ++j) {
-                    for (size_t k = j + 1; k < n; ++k) {
-                        vector<int> neighbor = solution;
-                        reverse(neighbor.begin() + i, neighbor.begin() + j + 1);
-                        reverse(neighbor.begin() + j + 1, neighbor.begin() + k + 1);
-                        local_neighborhood.push_back(move(neighbor)); 
-                    }
-                }
+            for (size_t i = thread_id; i < neighborhood_size; i += num_threads) {
+                size_t a = dist(rng);
+                size_t b = dist(rng);
+                size_t c = dist(rng);
+                if (a > b) swap(a, b);
+                if (b > c) swap(b, c);
+                if (a > b) swap(a, b);
+                vector<int> neighbor = solution;
+                reverse(neighbor.begin() + a, neighbor.begin() + b + 1);
+                reverse(neighbor.begin() + b + 1, neighbor.begin() + c + 1);
+                local_neighborhood.push_back(move(neighbor));
             }
 
             #pragma omp critical
@@ -370,13 +394,13 @@ private:
     vector<vector<int>> shuffle_subtour_neighborhood(const vector<int>& solution) {
         vector<vector<int>> neighborhood;
         size_t n = solution.size();
-        neighborhood.reserve(n * (n - 1) / 2); 
+        neighborhood.reserve(neighborhood_size);
 
         random_device rd;
         mt19937 g(rd());
 
         #pragma omp parallel for
-        for (size_t i = 0; i < n; ++i) {
+        for (size_t i = 0; i < neighborhood_size; ++i) {
             vector<int> neighbor = solution;
             shuffle(neighbor.begin(), neighbor.end(), g);
             #pragma omp critical
@@ -421,27 +445,40 @@ public:
         double total_improvement = 0.0;
         int iterations_to_optimal = 0;
 
-        for (int gen = 0; gen < generations; ++gen) {
-            vector<vector<int>> new_population;
+        vector<vector<int>> new_population(population_size);
 
-            while (new_population.size() < population_size) {
+        for (int gen = 0; gen < generations; ++gen) {
+            #pragma omp parallel for
+            for (int i = 0; i < population_size / 2; ++i) {
                 auto [parent1, parent2] = select_parents(population);
                 auto [child1, child2] = crossover(parent1, parent2);
-                new_population.push_back(mutate(child1));
-                new_population.push_back(mutate(child2));
+                child1 = mutate(child1);
+                child2 = mutate(child2);
+
+                new_population[2 * i] = move(child1);
+                new_population[2 * i + 1] = move(child2);
             }
 
             population = new_population;
 
-            vector<int> current_best_solution = *std::min_element(population.begin(), population.end(), [&](const std::vector<int>& a, const std::vector<int>& b) {
-                return calculate_total_distance(a) < calculate_total_distance(b);
-            });
-            int current_best_distance = calculate_total_distance(current_best_solution);
+            #pragma omp parallel for reduction(min:best_distance)
+            for (int i = 0; i < population.size(); ++i) {
+                int current_distance = calculate_total_distance(population[i]);
+                if (current_distance < best_distance) {
+                    #pragma omp critical
+                    {
+                        if (current_distance < best_distance) {
+                            best_solution = population[i];
+                            best_distance = current_distance;
+                            iterations_to_optimal = gen + 1;
+                        }
+                    }
+                }
+            }
 
-            if (current_best_distance < best_distance) {
-                best_solution = current_best_solution;
-                best_distance = current_best_distance;
-                iterations_to_optimal = gen + 1;
+            // Adaptive mutation rate
+            if (gen > generations / 2 && calculate_unique_solutions(ga_history) < population_size / 2) {
+                mutation_rate = min(mutation_rate * 1.1, 0.5); // Increase mutation rate up to 50%
             }
 
             total_improvement += (ga_history.back() - best_distance);
@@ -483,23 +520,21 @@ private:
     }
 
     pair<vector<int>, vector<int>> select_parents(const vector<vector<int>>& population) {
-        if (selection_operator == "tournament") {
-            return tournament_selection(population);
-        } else {
-            uniform_int_distribution<int> dist(0, population.size() - 1);
-            return {population[dist(rng)], population[dist(rng)]};
-        }
+        return tournament_selection(population, 5);
     }
 
-    pair<vector<int>, vector<int>> tournament_selection(const vector<vector<int>>& population) {
-        int tournament_size = 5;
-        vector<int> parent1 = *min_element(population.begin(), population.begin() + tournament_size, [&](const vector<int>& a, const vector<int>& b) {
-            return calculate_total_distance(a) < calculate_total_distance(b);
-        });
-        vector<int> parent2 = *min_element(population.begin() + tournament_size, population.end(), [&](const vector<int>& a, const vector<int>& b) {
-            return calculate_total_distance(a) < calculate_total_distance(b);
-        });
-        return {parent1, parent2};
+    pair<vector<int>, vector<int>> tournament_selection(const vector<vector<int>>& population, int tournament_size) {
+        uniform_int_distribution<int> dist(0, population.size() - 1);
+        auto select_one = [&]() {
+            vector<int> tournament;
+            for (int i = 0; i < tournament_size; ++i) {
+                tournament.push_back(dist(rng));
+            }
+            return *min_element(tournament.begin(), tournament.end(), [&](int a, int b) {
+                return calculate_total_distance(population[a]) < calculate_total_distance(population[b]);
+            });
+        };
+        return {population[select_one()], population[select_one()]};
     }
 
     pair<vector<int>, vector<int>> crossover(const vector<int>& parent1, const vector<int>& parent2) {
