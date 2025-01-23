@@ -79,12 +79,15 @@ Distance Distribution Histogram: Shows the distribution of best distances found 
 Box Plot: Compares the distribution of best distances using box plots.
 
 
-![0](img/7.png)
-Box Plot: Distributions for Tabu Search.
+<div style="text-align: center;">
+    <img src="img/7.png" alt="Box Plot: Distributions for Tabu Search">
+    <p>Box Plot: Distributions for Tabu Search</p>
+</div>
 
-
-![0](img/8.png)
-Box Plot: Distributions for Genetic Algorithm.
+<div style="text-align: center;">
+    <img src="img/8.png" alt="Box Plot: Distributions for Genetic Algorithm">
+    <p>Box Plot: Distributions for Genetic Algorithm</p>
+</div>
 
 ![0](img/13.png)
 Scatter Plot: Compares execution time for the current iteration GA vs TS.
